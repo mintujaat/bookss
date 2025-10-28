@@ -21,12 +21,9 @@
       background: var(--page-bg);
       color: var(--text-color);
       font-family: "Merriweather", serif;
-      line-height: 1.8;
-      letter-spacing: 0.2px;
       overflow-x: hidden;
     }
 
-    /* Background media (video/image) */
     .background-media {
       position: fixed;
       top: 0; left: 0;
@@ -38,7 +35,6 @@
       transform: scale(1.02);
     }
 
-    /* Overlay to add readable contrast */
     .overlay {
       position: fixed;
       top: 0; left: 0;
@@ -48,7 +44,6 @@
       z-index: -1;
     }
 
-    /* Header (Title + Author) */
     header {
       position: sticky;
       top: 0;
@@ -74,67 +69,29 @@
     }
 
     .reader-container {
-      max-width: 750px;
-      margin: 60px auto;
+      max-width: 850px;
+      margin: 50px auto;
       background: #fff;
       border-radius: 12px;
       box-shadow: 0 8px 30px var(--shadow);
-      padding: 60px 70px;
+      padding: 30px;
       position: relative;
-      transition: all 0.3s ease;
+      overflow: hidden;
     }
 
-    .book-cover, .page-image {
+    .book-cover {
       width: 100%;
       border-radius: 10px;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.1);
     }
 
-    .page-image { display: none; }
-
-    .content {
-      font-size: 1.1rem;
-      transition: opacity 0.25s ease-in-out;
-      white-space: pre-wrap;
-    }
-
-    .content.fade-out {
-      opacity: 0;
-    }
-
-    /* Navigation buttons */
-    .nav-btn {
-      position: fixed;
-      top: 50%;
-      transform: translateY(-50%);
-      background: rgba(255, 255, 255, 0.8);
-      backdrop-filter: blur(8px);
+    iframe {
+      width: 100%;
+      height: 80vh;
       border: none;
-      color: #333;
-      font-size: 1.8rem;
-      padding: 10px 14px;
-      border-radius: 50%;
-      cursor: pointer;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
-      transition: all 0.25s ease;
-      z-index: 20;
-    }
-
-    .nav-btn:hover {
-      background: var(--accent);
-      color: white;
-    }
-
-    #prevBtn { left: 30px; }
-    #nextBtn { right: 30px; }
-
-    .page-indicator {
-      text-align: center;
-      margin-top: 25px;
-      color: #666;
-      font-family: "Inter", sans-serif;
-      font-size: 0.95rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
     }
 
     footer {
@@ -142,16 +99,6 @@
       color: #999;
       font-size: 0.85rem;
       margin: 60px 0 20px;
-    }
-
-    @media (max-width: 768px) {
-      .reader-container {
-        padding: 30px 25px;
-        margin: 30px auto;
-      }
-      #prevBtn, #nextBtn {
-        display: none;
-      }
     }
   </style>
 </head>
@@ -166,21 +113,16 @@
     <div class="author" id="author"></div>
   </header>
 
-  <div class="reader-container">
+  <div class="reader-container text-center">
     <img id="bookCover" class="book-cover" src="" alt="Book Cover" style="display:none;">
-    <img id="pageImage" class="page-image" src="" alt="Page Image">
-    <div class="content" id="content">Please wait…</div>
-    <div class="page-indicator" id="pageIndicator">Page 0 / 0</div>
+    <iframe id="pdfFrame" src="" allow="autoplay"></iframe>
   </div>
-
-  <button id="prevBtn" class="nav-btn" disabled>←</button>
-  <button id="nextBtn" class="nav-btn" disabled>→</button>
 
   <footer>📘 End of Book</footer>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
-    import { getFirestore, doc, getDoc, collection, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCtyTzP8p26_QZQ2tk3KGsg5pZXU-nEY9Q",
@@ -200,32 +142,27 @@
 
     const titleEl = document.getElementById('title');
     const authorEl = document.getElementById('author');
-    const contentEl = document.getElementById('content');
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const pageIndicator = document.getElementById('pageIndicator');
     const bookCover = document.getElementById('bookCover');
     const bgVideo = document.getElementById('bgVideo');
     const bgImage = document.getElementById('bgImage');
-    const pageImage = document.getElementById('pageImage');
-
-    let pages = [];
-    let currentPage = 0;
+    const pdfFrame = document.getElementById('pdfFrame');
 
     if (!bookId) {
-      contentEl.textContent = '❌ Book ID missing. Use ?id=BOOK_ID in URL.';
+      pdfFrame.outerHTML = "<p class='text-danger text-center mt-5'>❌ Book ID missing. Use ?id=BOOK_ID in URL.</p>";
       throw new Error('Missing book ID');
     }
 
     async function loadBook() {
       const bookRef = doc(db, 'books', bookId);
       const snap = await getDoc(bookRef);
+
       if (!snap.exists()) {
-        contentEl.textContent = '❌ Book not found.';
+        pdfFrame.outerHTML = "<p class='text-danger text-center mt-5'>❌ Book not found in database.</p>";
         return;
       }
 
       const data = snap.data();
+
       titleEl.textContent = data.title || 'Untitled Book';
       authorEl.textContent = data.author ? `By ${data.author}` : '';
 
@@ -234,74 +171,25 @@
         bookCover.style.display = 'block';
       }
 
-      if (data.background_url) {
-        if (data.background_url.endsWith('.mp4') || data.background_url.includes('video')) {
-          bgVideo.src = data.background_url;
+      if (data.bg_url) {
+        if (data.bg_url.endsWith('.mp4') || data.bg_url.includes('video')) {
+          bgVideo.src = data.bg_url;
           bgVideo.style.display = 'block';
         } else {
-          bgImage.src = data.background_url;
+          bgImage.src = data.bg_url;
           bgImage.style.display = 'block';
         }
       }
 
-      const pagesCol = collection(db, `books/${bookId}/pages`);
-      const q = query(pagesCol, orderBy('pageNumber'));
-      const snapPages = await getDocs(q);
-
-      pages = snapPages.docs.map(d => ({
-        text: (d.data().content || '').trim(),
-        image: d.data().image_url || null
-      })).filter(p => p.text || p.image);
-
-      if (pages.length === 0 && Array.isArray(data.pages)) {
-        pages = data.pages.map(p => ({
-          text: p.content || '',
-          image: p.image_url || null
-        }));
-      }
-
-      if (pages.length === 0) {
-        contentEl.textContent = '⚠ No content available for this book.';
+      if (!data.pdf_url) {
+        pdfFrame.outerHTML = "<p class='text-warning text-center mt-5'>⚠ No PDF URL added for this book.</p>";
         return;
       }
 
-      updatePage();
+      // Convert Google Drive share link to embeddable preview link
+      const pdfLink = data.pdf_url.replace('/view?usp=drivesdk', '/preview').replace('/view', '/preview');
+      pdfFrame.src = pdfLink;
     }
-
-    function updatePage() {
-      const page = pages[currentPage];
-      contentEl.classList.add('fade-out');
-
-      setTimeout(() => {
-        contentEl.textContent = page.text || '';
-        pageIndicator.textContent = `Page ${currentPage + 1} / ${pages.length}`;
-        prevBtn.disabled = currentPage === 0;
-        nextBtn.disabled = currentPage === pages.length - 1;
-
-        if (page.image) {
-          pageImage.src = page.image;
-          pageImage.style.display = 'block';
-        } else {
-          pageImage.style.display = 'none';
-        }
-
-        contentEl.classList.remove('fade-out');
-      }, 180);
-    }
-
-    prevBtn.addEventListener('click', () => {
-      if (currentPage > 0) {
-        currentPage--;
-        updatePage();
-      }
-    });
-
-    nextBtn.addEventListener('click', () => {
-      if (currentPage < pages.length - 1) {
-        currentPage++;
-        updatePage();
-      }
-    });
 
     loadBook();
   </script>
