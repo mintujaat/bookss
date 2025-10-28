@@ -40,7 +40,7 @@
 <body>
 
   <h2 class="mb-3">📚 Book Admin Panel</h2>
-<button onclick="window.location.href='NOTIFICATION.HTML'" class="btn btn-primary">Go to NOTIFICATION Panel</button>
+  <button onclick="window.location.href='NOTIFICATION.HTML'" class="btn btn-primary">Go to NOTIFICATION Panel</button>
 
   <!-- Logo Section -->
   <div class="mb-4">
@@ -49,6 +49,7 @@
     <img id="logoPreview" class="logo-preview" src="" alt="">
     <button id="updateLogoBtn" class="btn btn-primary">Update Logo</button>
   </div>
+
   <!-- Marquee Section -->
   <div class="mb-4">
     <h5>📢 Marquee Line</h5>
@@ -63,7 +64,8 @@
       <div class="col-md-3"><input type="text" id="bookTitle" class="form-control" placeholder="Book Title"></div>
       <div class="col-md-3"><input type="text" id="bookAuthor" class="form-control" placeholder="Author"></div>
       <div class="col-md-3"><input type="text" id="bookCoverUrl" class="form-control" placeholder="Cover Image URL"></div>
-      <div class="col-md-2"><input type="text" id="bookBgUrl" class="form-control" placeholder="Background Video/Photo URL"></div>
+      <div class="col-md-3"><input type="text" id="bookPdfUrl" class="form-control" placeholder="Google Drive PDF Link"></div>
+      <div class="col-md-3"><input type="text" id="bookBgUrl" class="form-control" placeholder="Background Video/Photo URL (optional)"></div>
       <div class="col-md-1 text-center"><input type="checkbox" id="bookHot" class="form-check-input mt-2"> Hot</div>
       <div class="col-md-12 mt-2 text-end"><button id="addBookBtn" class="btn btn-success">Add</button></div>
     </div>
@@ -78,7 +80,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { 
-      getFirestore, collection, addDoc, getDocs, updateDoc, doc, deleteDoc, onSnapshot, setDoc, getDoc
+      getFirestore, collection, addDoc, getDocs, updateDoc, doc, deleteDoc, onSnapshot, setDoc
     } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -94,12 +96,14 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    // DOM refs
     const logoUrl = document.getElementById('logoUrl');
     const logoPreview = document.getElementById('logoPreview');
     const updateLogoBtn = document.getElementById('updateLogoBtn');
     const bookTitle = document.getElementById('bookTitle');
     const bookAuthor = document.getElementById('bookAuthor');
     const bookCoverUrl = document.getElementById('bookCoverUrl');
+    const bookPdfUrl = document.getElementById('bookPdfUrl');
     const bookBgUrl = document.getElementById('bookBgUrl');
     const coverPreview = document.getElementById('coverPreview');
     const bookHot = document.getElementById('bookHot');
@@ -122,15 +126,14 @@
       await setDoc(settingsRef, { logo_url: url });
       alert("✅ Logo updated!");
     };
+
     // ---------------- MARQUEE SECTION ----------------
     const marqueeRef = doc(db, "settings", "marquee");
     const marqueeInput = document.getElementById('marqueeText');
     const updateMarqueeBtn = document.getElementById('updateMarqueeBtn');
 
     onSnapshot(marqueeRef, (snap) => {
-      if (snap.exists()) {
-        marqueeInput.value = snap.data().text || "";
-      }
+      if (snap.exists()) marqueeInput.value = snap.data().text || "";
     });
 
     updateMarqueeBtn.onclick = async () => {
@@ -155,20 +158,22 @@
       const title = bookTitle.value.trim();
       const author = bookAuthor.value.trim();
       const cover = bookCoverUrl.value.trim();
+      const pdf = bookPdfUrl.value.trim();
       const bgUrl = bookBgUrl.value.trim();
       const isHot = bookHot.checked;
-      if (!title || !author || !cover) return alert("All fields required");
+      if (!title || !author || !cover || !pdf) return alert("All fields required (PDF link too)");
 
       await addDoc(collection(db, "books"), {
         title,
         author,
         cover_url: cover,
+        pdf_url: pdf,
         bg_url: bgUrl || "",
         isHot,
         createdAt: new Date()
       });
 
-      bookTitle.value = bookAuthor.value = bookCoverUrl.value = bookBgUrl.value = "";
+      bookTitle.value = bookAuthor.value = bookCoverUrl.value = bookBgUrl.value = bookPdfUrl.value = "";
       bookHot.checked = false;
       coverPreview.style.display = "none";
       alert("✅ Book added!");
@@ -191,6 +196,7 @@
                 <h5>${data.title}</h5>
                 <p class="text-muted">${data.author}</p>
                 ${data.bg_url ? `<small class="text-success">🎥 Background Added</small><br>` : ''}
+                ${data.pdf_url ? `<a href="${data.pdf_url}" target="_blank" class="btn btn-sm btn-outline-secondary mb-2">📄 View PDF</a><br>` : ''}
                 <div class="btn-group mb-2">
                   <button class="btn btn-sm btn-primary edit" data-id="${id}">Edit</button>
                   <button class="btn btn-sm btn-info pages" data-id="${id}">Pages</button>
@@ -228,12 +234,14 @@
           const newTitle = prompt("New title:");
           const newAuthor = prompt("New author:");
           const newCover = prompt("New cover URL:");
-          const newBg = prompt("New background video/photo URL (optional):");
-          if (!newTitle || !newAuthor || !newCover) return alert("All fields required");
+          const newPdf = prompt("New Google Drive PDF URL:");
+          const newBg = prompt("New background URL (optional):");
+          if (!newTitle || !newAuthor || !newCover || !newPdf) return alert("All fields required");
           await updateDoc(doc(db, "books", id), {
             title: newTitle,
             author: newAuthor,
             cover_url: newCover,
+            pdf_url: newPdf,
             bg_url: newBg || ""
           });
           alert("✅ Book updated");
@@ -248,109 +256,6 @@
           alert(makeHot ? "🔥 Book marked Hot" : "❄️ Book unmarked");
         };
       });
-
-      document.querySelectorAll('.pages').forEach(btn => {
-        btn.onclick = async () => {
-          const id = btn.dataset.id;
-          openPageEditor(id);
-        };
-      });
-    }
-
-    // ---------------- PAGE WRITING + DELETE + IMAGE URL ----------------
-    async function openPageEditor(bookId) {
-      const pagesRef = collection(db, `books/${bookId}/pages`);
-      const snap = await getDocs(pagesRef);
-      const pages = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => (a.pageNumber || 0) - (b.pageNumber || 0));
-
-      const modal = document.createElement('div');
-      modal.innerHTML = `
-        <div class="modal fade show" style="display:block; background:rgba(0,0,0,0.6);" tabindex="-1">
-          <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title">📝 Write Pages</h5>
-                <button type="button" class="btn-close" id="closeModal"></button>
-              </div>
-              <div class="modal-body" style="max-height:400px; overflow:auto;">
-                <div id="pageList">
-                  ${pages.map(p => `
-                    <div class="mb-3 page-block" data-id="${p.id}">
-                      <label>Page ${p.pageNumber}</label>
-                      <input type="text" class="form-control mb-1 page-image" placeholder="Image URL (optional)" value="${p.image_url || ''}">
-                      ${p.image_url ? `<img src="${p.image_url}" style="max-height:100px; border-radius:5px; margin-bottom:5px;">` : ''}
-                      <textarea class="form-control page-content" rows="3">${p.content}</textarea>
-                      <button class="btn btn-sm btn-danger mt-1 delete-page">Delete Page</button>
-                    </div>
-                  `).join('')}
-                </div>
-                <button class="btn btn-secondary mt-2" id="addPageBtn">+ Add Page</button>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id="savePagesBtn">Save Pages</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(modal);
-
-      let pageCount = pages.length;
-
-      document.getElementById('addPageBtn').onclick = () => {
-        pageCount++;
-        const block = document.createElement('div');
-        block.className = 'mb-3 page-block';
-        block.innerHTML = `
-          <label>Page ${pageCount}</label>
-          <input type="text" class="form-control mb-1 page-image" placeholder="Image URL (optional)">
-          <textarea class="form-control page-content" rows="3" placeholder="Write page ${pageCount} content..."></textarea>
-          <button class="btn btn-sm btn-danger mt-1 delete-page">Delete Page</button>
-        `;
-        document.getElementById('pageList').appendChild(block);
-        attachDeleteButtons();
-      };
-
-      document.getElementById('closeModal').onclick = () => modal.remove();
-
-      document.getElementById('savePagesBtn').onclick = async () => {
-        const blocks = document.querySelectorAll('.page-block');
-        let batchIndex = 1;
-
-        for (const block of blocks) {
-          const textarea = block.querySelector('.page-content');
-          const imageInput = block.querySelector('.page-image');
-          const content = textarea.value.trim();
-          const image_url = imageInput.value.trim();
-          if (!content && !image_url) continue;
-
-          const id = block.dataset.id;
-          const ref = id 
-            ? doc(db, `books/${bookId}/pages/${id}`)
-            : doc(collection(db, `books/${bookId}/pages`));
-
-          await setDoc(ref, { pageNumber: batchIndex++, content, image_url });
-        }
-
-        alert("✅ Pages saved successfully!");
-        modal.remove();
-      };
-
-      function attachDeleteButtons() {
-        modal.querySelectorAll('.delete-page').forEach(btn => {
-          btn.onclick = async () => {
-            const block = btn.closest('.page-block');
-            const pageId = block.dataset.id;
-            if (pageId && confirm("Delete this page?")) {
-              await deleteDoc(doc(db, `books/${bookId}/pages/${pageId}`));
-            }
-            block.remove();
-          };
-        });
-      }
-      attachDeleteButtons();
     }
   </script>
 </body>
