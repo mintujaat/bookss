@@ -103,8 +103,39 @@
   </style>
 </head>
 
-<body>
-  <video id="bgVideo" class="background-media" autoplay muted loop playsinline style="display:none;"></video>
+<body><!-- Background Video -->
+<video autoplay muted loop playsinline id="bgVideo" class="background-video">
+  <source src="https://cdn.pixabay.com/video/2022/10/21/135898-764370839_large.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
+<!-- Optional overlay (soft color tint or blur) -->
+<div class="video-overlay"></div>
+
+<style>
+  .background-video {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
+    z-index: -2;
+    filter: brightness(0.65); /* Darken for better contrast */
+  }
+
+  .video-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.2); /* optional soft overlay */
+    backdrop-filter: blur(3px); /* optional for frosted look */
+    z-index: -1;
+  }
+</style>
+
   <img id="bgImage" class="background-media" style="display:none;">
   <div class="overlay"></div>
 
