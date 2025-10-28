@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Book Admin Panel</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    body {
+      background: #f6f8fa;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 20px;
+    }
+    .logo-preview {
+      height: 50px;
+      margin-bottom: 10px;
+    }
+    .book-card {
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      overflow: hidden;
+      transition: 0.3s;
+    }
+    .book-card:hover {
+      transform: translateY(-5px);
+    }
+    .book-cover {
+      height: 200px;
+      width: 100%;
+      object-fit: cover;
+    }
+    .card-body {
+      background: #fff;
+    }
+    .btn-group button {
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2 class="mb-3">📚 Book Admin Panel</h2>
+<button onclick="window.location.href='NOTIFICATION.HTML'" class="btn btn-primary">Go to NOTIFICATION Panel</button>
+
+  <!-- Logo Section -->
+  <div class="mb-4">
+    <h5>🌐 Website Logo</h5>
+    <input type="text" id="logoUrl" class="form-control mb-2" placeholder="Enter Logo Image URL">
+    <img id="logoPreview" class="logo-preview" src="" alt="">
+    <button id="updateLogoBtn" class="btn btn-primary">Update Logo</button>
+  </div>
+  <!-- Marquee Section -->
+  <div class="mb-4">
+    <h5>📢 Marquee Line</h5>
+    <input type="text" id="marqueeText" class="form-control mb-2" placeholder="Enter marquee text">
+    <button id="updateMarqueeBtn" class="btn btn-primary">Update Marquee</button>
+  </div>
+
+  <!-- Add Book Section -->
+  <div class="mb-4">
+    <h5>➕ Add New Book</h5>
+    <div class="row g-2">
+      <div class="col-md-3"><input type="text" id="bookTitle" class="form-control" placeholder="Book Title"></div>
+      <div class="col-md-3"><input type="text" id="bookAuthor" class="form-control" placeholder="Author"></div>
+      <div class="col-md-3"><input type="text" id="bookCoverUrl" class="form-control" placeholder="Cover Image URL"></div>
+      <div class="col-md-2"><input type="text" id="bookBgUrl" class="form-control" placeholder="Background Video/Photo URL"></div>
+      <div class="col-md-1 text-center"><input type="checkbox" id="bookHot" class="form-check-input mt-2"> Hot</div>
+      <div class="col-md-12 mt-2 text-end"><button id="addBookBtn" class="btn btn-success">Add</button></div>
+    </div>
+    <img id="coverPreview" class="mt-2" src="" style="height: 100px; display:none; border-radius:5px;">
+  </div>
+
+  <!-- Books Display Section -->
+  <h5>📖 All Books</h5>
+  <div id="booksContainer" class="row g-3"></div>
+
+  <!-- Firebase + Logic -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { 
+      getFirestore, collection, addDoc, getDocs, updateDoc, doc, deleteDoc, onSnapshot, setDoc, getDoc
+    } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCtyTzP8p26_QZQ2tk3KGsg5pZXU-nEY9Q",
+      authDomain: "books-e1b53.firebaseapp.com",
+      projectId: "books-e1b53",
+      storageBucket: "books-e1b53.firebasestorage.app",
+      messagingSenderId: "206852333319",
+      appId: "1:206852333319:web:7c37f760db3cdba21c2fa2",
+      measurementId: "G-J1KG00X7D2"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const logoUrl = document.getElementById('logoUrl');
+    const logoPreview = document.getElementById('logoPreview');
+    const updateLogoBtn = document.getElementById('updateLogoBtn');
+    const bookTitle = document.getElementById('bookTitle');
+    const bookAuthor = document.getElementById('bookAuthor');
+    const bookCoverUrl = document.getElementById('bookCoverUrl');
+    const bookBgUrl = document.getElementById('bookBgUrl');
+    const coverPreview = document.getElementById('coverPreview');
+    const bookHot = document.getElementById('bookHot');
+    const addBookBtn = document.getElementById('addBookBtn');
+    const booksContainer = document.getElementById('booksContainer');
+
+    // ---------------- LOGO SECTION ----------------
+    const settingsRef = doc(db, "settings", "logo");
+    onSnapshot(settingsRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        logoPreview.src = data.logo_url || "";
+        logoUrl.value = data.logo_url || "";
+      }
+    });
+
+    updateLogoBtn.onclick = async () => {
+      const url = logoUrl.value.trim();
+      if (!url) return alert("Enter logo URL");
+      await setDoc(settingsRef, { logo_url: url });
+      alert("✅ Logo updated!");
+    };
+    // ---------------- MARQUEE SECTION ----------------
+    const marqueeRef = doc(db, "settings", "marquee");
+    const marqueeInput = document.getElementById('marqueeText');
+    const updateMarqueeBtn = document.getElementById('updateMarqueeBtn');
+
+    onSnapshot(marqueeRef, (snap) => {
+      if (snap.exists()) {
+        marqueeInput.value = snap.data().text || "";
+      }
+    });
+
+    updateMarqueeBtn.onclick = async () => {
+      const text = marqueeInput.value.trim();
+      if (!text) return alert("Enter marquee text");
+      await setDoc(marqueeRef, { text });
+      alert("✅ Marquee updated!");
+    };
+
+    // ---------------- ADD BOOK ----------------
+    bookCoverUrl.addEventListener('input', () => {
+      const url = bookCoverUrl.value.trim();
+      if (url) {
+        coverPreview.style.display = 'block';
+        coverPreview.src = url;
+      } else {
+        coverPreview.style.display = 'none';
+      }
+    });
+
+    addBookBtn.onclick = async () => {
+      const title = bookTitle.value.trim();
+      const author = bookAuthor.value.trim();
+      const cover = bookCoverUrl.value.trim();
+      const bgUrl = bookBgUrl.value.trim();
+      const isHot = bookHot.checked;
+      if (!title || !author || !cover) return alert("All fields required");
+
+      await addDoc(collection(db, "books"), {
+        title,
+        author,
+        cover_url: cover,
+        bg_url: bgUrl || "",
+        isHot,
+        createdAt: new Date()
+      });
+
+      bookTitle.value = bookAuthor.value = bookCoverUrl.value = bookBgUrl.value = "";
+      bookHot.checked = false;
+      coverPreview.style.display = "none";
+      alert("✅ Book added!");
+    };
+
+    // ---------------- LOAD BOOKS ----------------
+    function loadBooks() {
+      const q = collection(db, "books");
+      onSnapshot(q, (snapshot) => {
+        booksContainer.innerHTML = "";
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          const id = docSnap.id;
+          const card = document.createElement('div');
+          card.className = 'col-md-3';
+          card.innerHTML = `
+            <div class="book-card">
+              <img src="${data.cover_url}" class="book-cover" alt="Cover">
+              <div class="card-body">
+                <h5>${data.title}</h5>
+                <p class="text-muted">${data.author}</p>
+                ${data.bg_url ? `<small class="text-success">🎥 Background Added</small><br>` : ''}
+                <div class="btn-group mb-2">
+                  <button class="btn btn-sm btn-primary edit" data-id="${id}">Edit</button>
+                  <button class="btn btn-sm btn-info pages" data-id="${id}">Pages</button>
+                  <button class="btn btn-sm btn-danger delete" data-id="${id}">Delete</button>
+                </div>
+                <div class="btn-group">
+                  <button class="btn btn-sm ${data.isHot ? 'btn-warning' : 'btn-outline-warning'} hot" data-id="${id}">
+                    ${data.isHot ? 'Hot🔥' : 'Set Hot'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+          booksContainer.appendChild(card);
+        });
+        attachBookActions();
+      });
+    }
+    loadBooks();
+
+    // ---------------- BOOK ACTIONS ----------------
+    function attachBookActions() {
+      document.querySelectorAll('.delete').forEach(btn => {
+        btn.onclick = async () => {
+          if (!confirm("Delete this book?")) return;
+          const id = btn.dataset.id;
+          await deleteDoc(doc(db, "books", id));
+          alert("❌ Book deleted");
+        };
+      });
+
+      document.querySelectorAll('.edit').forEach(btn => {
+        btn.onclick = async () => {
+          const id = btn.dataset.id;
+          const newTitle = prompt("New title:");
+          const newAuthor = prompt("New author:");
+          const newCover = prompt("New cover URL:");
+          const newBg = prompt("New background video/photo URL (optional):");
+          if (!newTitle || !newAuthor || !newCover) return alert("All fields required");
+          await updateDoc(doc(db, "books", id), {
+            title: newTitle,
+            author: newAuthor,
+            cover_url: newCover,
+            bg_url: newBg || ""
+          });
+          alert("✅ Book updated");
+        };
+      });
+
+      document.querySelectorAll('.hot').forEach(btn => {
+        btn.onclick = async () => {
+          const id = btn.dataset.id;
+          const makeHot = btn.textContent.includes("Set");
+          await updateDoc(doc(db, "books", id), { isHot: makeHot });
+          alert(makeHot ? "🔥 Book marked Hot" : "❄️ Book unmarked");
+        };
+      });
+
+      document.querySelectorAll('.pages').forEach(btn => {
+        btn.onclick = async () => {
+          const id = btn.dataset.id;
+          openPageEditor(id);
+        };
+      });
+    }
+
+    // ---------------- PAGE WRITING + DELETE + IMAGE URL ----------------
+    async function openPageEditor(bookId) {
+      const pagesRef = collection(db, `books/${bookId}/pages`);
+      const snap = await getDocs(pagesRef);
+      const pages = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (a.pageNumber || 0) - (b.pageNumber || 0));
+
+      const modal = document.createElement('div');
+      modal.innerHTML = `
+        <div class="modal fade show" style="display:block; background:rgba(0,0,0,0.6);" tabindex="-1">
+          <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">📝 Write Pages</h5>
+                <button type="button" class="btn-close" id="closeModal"></button>
+              </div>
+              <div class="modal-body" style="max-height:400px; overflow:auto;">
+                <div id="pageList">
+                  ${pages.map(p => `
+                    <div class="mb-3 page-block" data-id="${p.id}">
+                      <label>Page ${p.pageNumber}</label>
+                      <input type="text" class="form-control mb-1 page-image" placeholder="Image URL (optional)" value="${p.image_url || ''}">
+                      ${p.image_url ? `<img src="${p.image_url}" style="max-height:100px; border-radius:5px; margin-bottom:5px;">` : ''}
+                      <textarea class="form-control page-content" rows="3">${p.content}</textarea>
+                      <button class="btn btn-sm btn-danger mt-1 delete-page">Delete Page</button>
+                    </div>
+                  `).join('')}
+                </div>
+                <button class="btn btn-secondary mt-2" id="addPageBtn">+ Add Page</button>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="savePagesBtn">Save Pages</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      let pageCount = pages.length;
+
+      document.getElementById('addPageBtn').onclick = () => {
+        pageCount++;
+        const block = document.createElement('div');
+        block.className = 'mb-3 page-block';
+        block.innerHTML = `
+          <label>Page ${pageCount}</label>
+          <input type="text" class="form-control mb-1 page-image" placeholder="Image URL (optional)">
+          <textarea class="form-control page-content" rows="3" placeholder="Write page ${pageCount} content..."></textarea>
+          <button class="btn btn-sm btn-danger mt-1 delete-page">Delete Page</button>
+        `;
+        document.getElementById('pageList').appendChild(block);
+        attachDeleteButtons();
+      };
+
+      document.getElementById('closeModal').onclick = () => modal.remove();
+
+      document.getElementById('savePagesBtn').onclick = async () => {
+        const blocks = document.querySelectorAll('.page-block');
+        let batchIndex = 1;
+
+        for (const block of blocks) {
+          const textarea = block.querySelector('.page-content');
+          const imageInput = block.querySelector('.page-image');
+          const content = textarea.value.trim();
+          const image_url = imageInput.value.trim();
+          if (!content && !image_url) continue;
+
+          const id = block.dataset.id;
+          const ref = id 
+            ? doc(db, `books/${bookId}/pages/${id}`)
+            : doc(collection(db, `books/${bookId}/pages`));
+
+          await setDoc(ref, { pageNumber: batchIndex++, content, image_url });
+        }
+
+        alert("✅ Pages saved successfully!");
+        modal.remove();
+      };
+
+      function attachDeleteButtons() {
+        modal.querySelectorAll('.delete-page').forEach(btn => {
+          btn.onclick = async () => {
+            const block = btn.closest('.page-block');
+            const pageId = block.dataset.id;
+            if (pageId && confirm("Delete this page?")) {
+              await deleteDoc(doc(db, `books/${bookId}/pages/${pageId}`));
+            }
+            block.remove();
+          };
+        });
+      }
+      attachDeleteButtons();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!-- 🔔 Notification Management -->
+<div class="card mt-4 p-4 shadow-sm" style="max-width:600px; margin:auto;">
+  <h4 class="mb-3">📢 Manage Notifications</h4>
+
+  <!-- Input -->
+  <div class="input-group mb-3">
+    <input type="text" id="notifInput" class="form-control" placeholder="Enter new notification message...">
+    <button id="addNotifBtn" class="btn btn-primary">Add</button>
+  </div>
+
+  <!-- List -->
+  <ul id="notifList" class="list-group"></ul>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+  import { 
+    getFirestore, 
+    collection, 
+    addDoc, 
+    deleteDoc, 
+    doc, 
+    onSnapshot, 
+    serverTimestamp 
+  } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCtyTzP8p26_QZQ2tk3KGsg5pZXU-nEY9Q",
+    authDomain: "books-e1b53.firebaseapp.com",
+    projectId: "books-e1b53",
+    storageBucket: "books-e1b53.firebasestorage.app",
+    messagingSenderId: "206852333319",
+    appId: "1:206852333319:web:7c37f760db3cdba21c2fa2"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const notifInput = document.getElementById("notifInput");
+  const addNotifBtn = document.getElementById("addNotifBtn");
+  const notifList = document.getElementById("notifList");
+  const notifRef = collection(db, "notifications");
+
+  // ✅ Add Notification
+  addNotifBtn.addEventListener("click", async () => {
+    const msg = notifInput.value.trim();
+    if (!msg) return alert("Please enter a notification message.");
+    await addDoc(notifRef, {
+      message: msg,
+      timestamp: serverTimestamp()
+    });
+    notifInput.value = "";
+  });
+
+  // 🧹 Delete Notification
+  async function deleteNotification(id) {
+    await deleteDoc(doc(db, "notifications", id));
+  }
+
+  // 🔁 Live Load Notifications
+  onSnapshot(notifRef, (snapshot) => {
+    notifList.innerHTML = "";
+    if (snapshot.empty) {
+      notifList.innerHTML = `<li class="list-group-item text-center text-muted">No notifications yet</li>`;
+      return;
+    }
+
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      const li = document.createElement("li");
+      li.className = "list-group-item d-flex justify-content-between align-items-center";
+      li.innerHTML = `
+        <span>📢 ${data.message}</span>
+        <button class="btn btn-sm btn-danger">Delete</button>
+      `;
+      li.querySelector("button").addEventListener("click", () => deleteNotification(docSnap.id));
+      notifList.appendChild(li);
+    });
+  });
+</script>

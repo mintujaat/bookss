@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📚 Book Library</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    .background-video {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      z-index: -1;
+      opacity: 0.35;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 25px 40px;
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      position: relative;
+    }
+
+    .logo {
+      height: 60px;
+      width: 60px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #fff;
+      box-shadow: 0 0 8px rgba(255,255,255,0.4);
+    }
+
+    .headline {
+      flex: 1;
+      text-align: center;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #f9fafc;
+      letter-spacing: 1px;
+      text-shadow: 0 0 8px rgba(0,0,0,0.4);
+    }
+
+    /* 🔔 Notification Icon */
+    .notify-icon {
+      font-size: 1.6rem;
+      color: #fff;
+      cursor: pointer;
+      transition: 0.2s;
+      position: relative;
+    }
+    .notify-icon:hover { transform: scale(1.1); }
+    .notify-badge {
+      position: absolute;
+      top: -6px; right: -6px;
+      background: red;
+      color: white;
+      border-radius: 50%;
+      font-size: 0.7rem;
+      padding: 2px 5px;
+    }
+
+    /* 🔔 Notification Popup */
+    .notify-popup {
+      display: none;
+      position: absolute;
+      top: 70px; right: 40px;
+      width: 300px;
+      max-height: 350px;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.9);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      padding: 10px;
+      z-index: 999;
+    }
+
+    .notify-item {
+      padding: 10px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      color: #ddd;
+      font-size: 0.9rem;
+    }
+
+    .notify-item:last-child { border-bottom: none; }
+
+    /* 🔥 Marquee Styling */
+    .marquee-wrapper {
+      overflow: hidden;
+      white-space: nowrap;
+      background: rgba(255,255,255,0.08);
+      border-top: 1px solid rgba(255,255,255,0.1);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(8px);
+    }
+
+    .marquee-text {
+      display: inline-block;
+      padding: 10px 0;
+      color: #f1f1f1;
+      font-size: 1rem;
+      font-weight: 500;
+      animation: marquee 18s linear infinite;
+    }
+
+    @keyframes marquee {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+
+    .search-bar {
+      max-width: 400px;
+      margin: 30px auto;
+    }
+
+    .search-bar input {
+      border-radius: 30px;
+      padding: 10px 20px;
+      border: none;
+      outline: none;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+
+    .section-title {
+      font-weight: 600;
+      font-size: 1.4rem;
+      margin: 25px 0 15px;
+      border-left: 5px solid #0d6efd;
+      padding-left: 10px;
+      color: #fff;
+    }
+
+    .book-card {
+      background: rgba(255,255,255,0.08);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .book-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+    }
+
+    .book-cover {
+      width: 100%;
+      height: 280px;
+      object-fit: cover;
+      border-bottom: 2px solid rgba(255,255,255,0.1);
+    }
+
+    .book-body {
+      padding: 15px;
+      text-align: center;
+    }
+
+    .book-body h6 {
+      margin: 0;
+      font-weight: 600;
+      color: #fff;
+      font-size: 1.05rem;
+    }
+
+    .book-body p {
+      color: #ccc;
+      margin: 5px 0 0;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+      header { flex-direction: column; gap: 10px; text-align: center; }
+      .headline { font-size: 1.5rem; }
+      .book-cover { height: 220px; }
+      .notify-popup { right: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+  <video id="bgVideo" class="background-video" autoplay muted loop playsinline></video>
+
+  <header>
+    <img id="siteLogo" class="logo" src="" alt="Logo">
+    <div id="headline" class="headline">Book Library</div>
+    <div id="notifyBtn" class="notify-icon">
+      🔔
+      <span id="notifyBadge" class="notify-badge" style="display:none;">0</span>
+    </div>
+    <div id="notifyPopup" class="notify-popup"></div>
+  </header>
+
+  <!-- 🔥 Live Marquee Line -->
+  <div class="marquee-wrapper">
+    <div id="marqueeText" class="marquee-text">Welcome to Book Library 📚 | Stay tuned for updates...</div>
+  </div>
+
+  <div class="container mt-4">
+    <div class="search-bar text-center">
+      <input type="text" id="searchBox" class="form-control" placeholder="🔍 Search books by name...">
+    </div>
+
+    <h4 class="section-title">🔥 Hot Books</h4>
+    <div id="hotBooks" class="row g-4 justify-content-center"></div>
+
+    <h4 class="section-title">📚 All Books</h4>
+    <div id="allBooks" class="row g-4 justify-content-center"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, doc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCtyTzP8p26_QZQ2tk3KGsg5pZXU-nEY9Q",
+      authDomain: "books-e1b53.firebaseapp.com",
+      projectId: "books-e1b53",
+      storageBucket: "books-e1b53.firebasestorage.app",
+      messagingSenderId: "206852333319",
+      appId: "1:206852333319:web:7c37f760db3cdba21c2fa2",
+      measurementId: "G-J1KG00X7D2"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const logo = document.getElementById('siteLogo');
+    const headline = document.getElementById('headline');
+    const bgVideo = document.getElementById('bgVideo');
+    const searchBox = document.getElementById('searchBox');
+    const hotBooks = document.getElementById('hotBooks');
+    const allBooks = document.getElementById('allBooks');
+    const marqueeText = document.getElementById('marqueeText');
+    const notifyBtn = document.getElementById('notifyBtn');
+    const notifyPopup = document.getElementById('notifyPopup');
+    const notifyBadge = document.getElementById('notifyBadge');
+
+    let booksData = [];
+
+    // ---- 🔧 Load Logo, Headline, Background ----
+    const settingsRef = doc(db, "settings", "logo");
+    onSnapshot(settingsRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.logo_url) logo.src = data.logo_url;
+        if (data.headline) headline.textContent = data.headline;
+        if (data.bg_video_url) bgVideo.src = data.bg_video_url;
+      }
+    });
+
+    // ---- ✅ Load Marquee (Fixed) ----
+    const marqueeRef = doc(db, "settings", "marquee");
+    onSnapshot(marqueeRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        marqueeText.textContent = data.text || "📢 Welcome to Book Library!";
+      }
+    });
+
+    // ---- 🔔 Load Notifications ----
+    const notifyRef = collection(db, "notifications");
+    onSnapshot(notifyRef, (snapshot) => {
+      const notifications = [];
+      snapshot.forEach(docSnap => {
+        notifications.push(docSnap.data());
+      });
+
+      notifyPopup.innerHTML = notifications.length
+        ? notifications.map(n => `<div class="notify-item">📢 ${n.message}</div>`).join('')
+        : `<div class="notify-item">No notifications</div>`;
+
+      if (notifications.length > 0) {
+        notifyBadge.textContent = notifications.length;
+        notifyBadge.style.display = "inline-block";
+      } else {
+        notifyBadge.style.display = "none";
+      }
+    });
+
+    // ---- 🔔 Toggle Notification Popup ----
+    let popupVisible = false;
+    notifyBtn.addEventListener('click', () => {
+      popupVisible = !popupVisible;
+      notifyPopup.style.display = popupVisible ? 'block' : 'none';
+    });
+
+    // ---- Load Books ----
+    const booksRef = collection(db, "books");
+    onSnapshot(booksRef, (snapshot) => {
+      booksData = [];
+      snapshot.forEach(docSnap => {
+        booksData.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      renderBooks(booksData);
+    });
+
+    // ---- Render Books ----
+    function renderBooks(list) {
+      hotBooks.innerHTML = "";
+      allBooks.innerHTML = "";
+
+      list.forEach(data => {
+        const card = `
+          <div class="col-md-6 col-lg-4">
+            <div class="book-card" onclick="window.location.href='reader.html?id=${data.id}'">
+              <img src="${data.cover_url || 'https://via.placeholder.com/400x500?text=No+Cover'}" class="book-cover" alt="Cover">
+              <div class="book-body">
+                <h6>${data.title || 'Untitled'}</h6>
+                <p>${data.author || 'Unknown Author'}</p>
+              </div>
+            </div>
+          </div>
+        `;
+        if (data.isHot) hotBooks.innerHTML += card;
+        allBooks.innerHTML += card;
+      });
+    }
+
+    // ---- Live Search ----
+    searchBox.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase().trim();
+      const filtered = booksData.filter(b => (b.title || '').toLowerCase().includes(term));
+      renderBooks(filtered);
+    });
+  </script>
+</body>
+</html>
